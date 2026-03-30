@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUTOMTR — KI-Potenzial Audit Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        *{margin:0;padding:0;box-sizing:border-box}
+
+        :root{
+            --bg:#e8eaf0;
+            --surface:rgba(255,255,255,0.42);
+            --surface-hover:rgba(255,255,255,0.62);
+            --glass:rgba(255,255,255,0.32);
+            --glass-strong:rgba(255,255,255,0.55);
+            --glass-border:rgba(255,255,255,0.50);
+            --glass-border-light:rgba(255,255,255,0.35);
+            --dark:#0f172a;
+            --dark-card:rgba(15,23,42,0.90);
+            --dark-surface:rgba(20,30,55,0.92);
+            --accent:#2563eb;
+            --accent-mid:#3b82f6;
+            --accent-light:#60a5fa;
+            --accent-bright:#93c5fd;
+            --accent-glow:rgba(37,99,235,0.25);
+            --grad-accent:linear-gradient(135deg,#2563eb,#06b6d4);
+            --grad-accent-light:linear-gradient(135deg,#3b82f6,#22d3ee);
+            --grad-accent-soft:linear-gradient(135deg,rgba(37,99,235,0.12),rgba(6,182,212,0.08));
+            --grad-dark:linear-gradient(135deg,#0f172a,#1e293b);
+            --grad-dark-card:linear-gradient(135deg,rgba(15,23,42,0.92),rgba(30,41,59,0.88));
+            --grad-success:linear-gradient(135deg,#059669,#34d399);
+            --grad-danger:linear-gradient(135deg,#dc2626,#f87171);
+            --grad-warning:linear-gradient(135deg,#d97706,#fbbf24);
+            --text:#0f172a;
+            --text-secondary:#64748b;
+            --text-light:rgba(255,255,255,0.92);
+            --text-light-secondary:rgba(255,255,255,0.50);
+            --success:#059669;
+            --warning:#d97706;
+            --danger:#dc2626;
+            --radius:24px;
+            --radius-md:16px;
+            --radius-sm:12px;
+            --shadow-soft:0 4px 24px rgba(0,0,0,0.04);
+            --shadow:0 8px 40px rgba(0,0,0,0.06);
+            --shadow-lg:0 20px 60px rgba(0,0,0,0.10);
+            --blur:blur(28px);
+            --blur-heavy:blur(40px);
+        }
+
+        html{scroll-behavior:smooth}
+
+        body{
+            font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+            background:var(--bg);
+            color:var(--text);
+            min-height:100vh;
+            overflow-x:hidden;
+        }
+
+        /* ── Ambient blobs ── */
+        .blob{
+            position:fixed;border-radius:50%;
+            filter:blur(100px);opacity:0.35;
+            pointer-events:none;z-index:0;
+        }
+        .blob-1{width:700px;height:700px;background:radial-gradient(circle,#3b82f6,#06b6d4 40%,transparent 70%);top:-250px;right:-150px;}
+        .blob-2{width:550px;height:550px;background:radial-gradient(circle,#0ea5e9,#2dd4bf 50%,transparent 70%);bottom:-200px;left:-120px;}
+        .blob-3{width:400px;height:400px;background:radial-gradient(circle,#22d3ee,transparent 70%);top:40%;left:30%;opacity:0.18;}
+
+        .layout{
+            display:flex;gap:20px;
+            padding:20px;
+            min-height:100vh;
+            position:relative;z-index:1;
+        }
+
+        /* ═══════════════════════════════════════════ */
+        /* ── FLOATING SIDEBAR NAV ──                  */
+        /* ═══════════════════════════════════════════ */
+        .sidebar{
+            width:240px;
+            flex-shrink:0;
+            position:sticky;top:20px;
+            height:calc(100vh - 40px);
+            display:flex;flex-direction:column;
+            background:var(--glass-strong);
+            backdrop-filter:var(--blur-heavy);
+            -webkit-backdrop-filter:var(--blur-heavy);
+            border:1px solid var(--glass-border);
+            border-radius:var(--radius);
+            padding:24px 16px;
+            box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,0.5);
+            overflow-y:auto;
+            z-index:10;
+        }
+
+        .sidebar-brand{
+            display:flex;align-items:center;gap:10px;
+            padding:4px 8px 20px;
+            margin-bottom:8px;
+        }
+        .logo-icon{
+            width:34px;height:34px;
+            background:var(--grad-accent);border-radius:10px;
+            display:flex;align-items:center;justify-content:center;
+            color:white;font-weight:800;font-size:15px;
+            box-shadow:0 4px 12px var(--accent-glow);
+        }
+        .sidebar-brand span{font-weight:800;font-size:17px;letter-spacing:-0.5px;}
+
+        .nav-divider{
+            height:1px;
+            background:linear-gradient(90deg,transparent,rgba(0,0,0,0.06),transparent);
+            margin:4px 8px 12px;
+        }
+
+        .nav-section{margin-bottom:16px;}
+        .nav-section-title{
+            font-size:9.5px;font-weight:700;text-transform:uppercase;
+            letter-spacing:1.4px;color:var(--text-secondary);
+            padding:0 10px;margin-bottom:6px;
+        }
+        .nav-item{
+            display:flex;align-items:center;gap:10px;
+            padding:9px 10px;border-radius:var(--radius-sm);
+            cursor:pointer;transition:all 0.25s cubic-bezier(.4,0,.2,1);
+            font-size:13px;font-weight:500;
+            color:var(--text-secondary);text-decoration:none;
+            user-select:none;position:relative;
+        }
+        .nav-item:hover{
+            background:rgba(37,99,235,0.07);color:var(--accent);
+            transform:translateX(2px);
+        }
+        .nav-item.active{
+            background:var(--grad-accent);color:white;
+            box-shadow:0 6px 20px var(--accent-glow);
+            transform:translateX(0);
+        }
+        .nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:0.75;}
+        .nav-item.active svg{opacity:1;}
+        .nav-item .badge{
+            margin-left:auto;background:var(--accent);color:white;
+            font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:8px;
+        }
+
+        .sidebar-footer{
+            margin-top:auto;padding:14px;
+            background:linear-gradient(135deg,#2563eb,#0ea5e9);
+            border-radius:var(--radius-md);
+            color:white;
+            box-shadow:0 4px 16px rgba(37,99,235,0.25),inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+        .user-row{display:flex;align-items:center;gap:10px;}
+        .avatar{
+            width:34px;height:34px;border-radius:10px;
+            background:var(--grad-accent);
+            display:flex;align-items:center;justify-content:center;
+            font-weight:700;font-size:12px;
+            box-shadow:0 2px 8px var(--accent-glow);
+        }
+        .user-name{font-weight:600;font-size:12.5px;color:white;}
+        .user-role{color:rgba(255,255,255,0.80);font-size:10.5px;margin-top:1px;}
+
+        /* ═══════════════════════════════════════════ */
+        /* ── MAIN AREA ──                             */
+        /* ═══════════════════════════════════════════ */
+        .main{
+            flex:1;min-width:0;
+            display:flex;flex-direction:column;gap:0;
+        }
+
+        /* ── Topbar ── */
+        .topbar{
+            display:flex;align-items:center;justify-content:space-between;
+            padding:16px 24px;
+            background:var(--glass);
+            backdrop-filter:var(--blur-heavy);
+            -webkit-backdrop-filter:var(--blur-heavy);
+            border:1px solid var(--glass-border);
+            border-radius:var(--radius);
+            margin-bottom:20px;
+            box-shadow:var(--shadow-soft),inset 0 1px 0 rgba(255,255,255,0.5);
+        }
+        .topbar-left h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .topbar-left p{font-size:12px;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+        .topbar-cta{
+            display:inline-flex;align-items:center;gap:8px;
+            padding:9px 20px;
+            background:var(--grad-accent);
+            color:white;
+            font-family:inherit;font-size:13px;font-weight:600;
+            border:none;border-radius:var(--radius-sm);
+            text-decoration:none;
+            cursor:pointer;
+            transition:all 0.3s cubic-bezier(.22,1,.36,1);
+            box-shadow:0 4px 16px var(--accent-glow);
+        }
+        .topbar-cta:hover{
+            transform:translateY(-1px) scale(1.03);
+            box-shadow:0 6px 24px rgba(37,99,235,0.35),0 0 40px rgba(6,182,212,0.10);
+        }
+        .topbar-cta svg{flex-shrink:0;}
+
+        /* ── Pages ── */
+        .page{display:none;animation:pageFade 0.55s cubic-bezier(.22,1,.36,1);}
+        .page.active{display:block;}
+        @keyframes pageFade{
+            from{opacity:0;transform:translateY(14px) scale(0.995);}
+            to{opacity:1;transform:translateY(0) scale(1);}
+        }
+
+        /* ── Content area ── */
+        .content{
+            background:var(--glass);
+            backdrop-filter:var(--blur-heavy);
+            -webkit-backdrop-filter:var(--blur-heavy);
+            border:1px solid var(--glass-border);
+            border-radius:var(--radius);
+            padding:28px;
+            box-shadow:var(--shadow-soft),inset 0 1px 0 rgba(255,255,255,0.5);
+            min-height:calc(100vh - 140px);
+        }
+
+        /* ── Grids ── */
+        .grid{display:grid;gap:16px;}
+        .grid-2{grid-template-columns:1fr 1fr;}
+        .grid-3{grid-template-columns:1fr 1fr 1fr;}
+        .grid-4{grid-template-columns:repeat(4,1fr);}
+        .grid-wide{grid-template-columns:1.6fr 1fr;}
+
+        /* ── Cards ── */
+        .card{
+            background:rgba(255,255,255,0.5);
+            backdrop-filter:var(--blur);
+            -webkit-backdrop-filter:var(--blur);
+            border:1px solid var(--glass-border-light);
+            border-radius:var(--radius-md);
+            padding:22px;
+            transition:all 0.35s cubic-bezier(.22,1,.36,1);
+            box-shadow:var(--shadow-soft);
+        }
+        .card:hover{
+            box-shadow:var(--shadow),0 0 0 1px rgba(37,99,235,0.04);
+            transform:translateY(-3px) scale(1.012);
+        }
+        .card-dark{
+            background:linear-gradient(135deg,#2563eb,#0ea5e9,#06b6d4);
+            border-color:rgba(255,255,255,0.12);
+            color:white;
+            box-shadow:0 8px 32px rgba(37,99,235,0.22),inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+        .card-dark:hover{
+            transform:translateY(-3px) scale(1.012);
+            box-shadow:0 12px 40px rgba(37,99,235,0.30),0 0 60px rgba(6,182,212,0.08);
+        }
+        .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+        .card-title{font-size:13.5px;font-weight:600;letter-spacing:-0.2px;}
+        .card-subtitle{font-size:11.5px;color:var(--text-secondary);margin-top:2px;}
+        .card-dark .card-subtitle{color:rgba(255,255,255,0.85);}
+
+        /* ── Stat cards ── */
+        .stat-card{position:relative;overflow:hidden;}
+        .stat-icon{
+            width:42px;height:42px;border-radius:var(--radius-sm);
+            display:flex;align-items:center;justify-content:center;
+            margin-bottom:14px;
+        }
+        .stat-value{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1;}
+        .stat-label{font-size:12px;color:var(--text-secondary);margin-top:5px;line-height:1.4;}
+        .card-dark .stat-label{color:rgba(255,255,255,0.85);}
+        .stat-change{
+            display:inline-flex;align-items:center;gap:4px;
+            font-size:11px;font-weight:600;margin-top:10px;
+            padding:3px 8px;border-radius:6px;
+        }
+        .stat-change.up{background:rgba(5,150,105,0.1);color:var(--success);}
+        .stat-change.down{background:rgba(220,38,38,0.08);color:var(--danger);}
+        .stat-change.neutral{background:rgba(37,99,235,0.1);color:var(--accent);}
+        .stat-bg{
+            position:absolute;right:-8px;bottom:-12px;
+            font-size:72px;font-weight:900;opacity:0.04;
+            line-height:1;pointer-events:none;
+        }
+        .card-dark .stat-bg{opacity:0.08;color:white;}
+        .card-dark [style*="color:var(--text-secondary)"]{color:rgba(255,255,255,0.85) !important;}
+        .card-dark [style*="color:var(--accent)"]{color:white !important;}
+        .card-dark [style*="color:var(--danger)"]{color:white !important;}
+        .card-dark [style*="color:var(--success)"]{color:white !important;}
+        .card-dark [style*="color:var(--warning)"]{color:white !important;}
+        .card-dark .stat-value{color:white !important;}
+        .card-dark .stat-change{background:rgba(255,255,255,0.15) !important;color:white !important;}
+        .card-dark .stat-icon{background:rgba(255,255,255,0.15) !important;color:white !important;}
+        .card-dark .stat-icon svg{stroke:white !important;}
+
+        .source-tag{
+            display:inline-block;font-size:9.5px;font-weight:600;
+            padding:2px 7px;border-radius:5px;
+            background:rgba(37,99,235,0.08);color:var(--accent);
+            margin-top:8px;
+        }
+        .card-dark .source-tag{background:rgba(255,255,255,0.15);color:white;}
+
+        .chart-container{position:relative;width:100%;height:240px;}
+
+        /* ── Phase timeline ── */
+        .phase-timeline{display:flex;gap:0;position:relative;}
+        .phase-timeline::before{
+            content:'';position:absolute;top:30px;left:55px;right:55px;
+            height:2px;
+            background:rgba(255,255,255,0.25);
+            border-radius:2px;
+        }
+        .phase-item{flex:1;text-align:center;position:relative;padding:0 10px;}
+        .phase-num{
+            width:60px;height:60px;border-radius:50%;
+            background:var(--grad-dark);color:white;
+            display:flex;align-items:center;justify-content:center;
+            font-weight:800;font-size:20px;
+            margin:0 auto 14px;position:relative;z-index:2;
+            box-shadow:0 6px 24px rgba(15,23,42,0.25);
+        }
+        .phase-item:nth-child(2) .phase-num{background:var(--grad-accent);box-shadow:0 6px 24px var(--accent-glow);}
+        .phase-item:nth-child(3) .phase-num{background:linear-gradient(135deg,#3b82f6,#06b6d4);}
+        .phase-title{font-weight:700;font-size:14px;margin-bottom:5px;}
+        .phase-desc{font-size:12px;color:var(--text-secondary);line-height:1.5;max-width:220px;margin:0 auto;}
+        .phase-badge{
+            display:inline-block;margin-top:8px;font-size:10.5px;font-weight:600;
+            padding:3px 9px;border-radius:6px;
+            background:rgba(37,99,235,0.08);color:var(--accent);
+        }
+
+        /* ── Competency bars ── */
+        .cbar-row{display:flex;align-items:center;gap:12px;padding:6px 0;}
+        .cbar-name{font-size:12px;font-weight:500;min-width:125px;}
+        .cbar-track{flex:1;height:8px;background:rgba(0,0,0,0.04);border-radius:4px;overflow:hidden;}
+        .cbar-fill{height:100%;border-radius:4px;transition:width 1.4s cubic-bezier(.22,1,.36,1);width:0;}
+        .cbar-val{font-size:12px;font-weight:700;min-width:38px;text-align:right;}
+
+        /* ── ROI bars ── */
+        .rbar-row{display:flex;align-items:center;gap:14px;padding:8px 0;}
+        .rbar-label{font-size:12px;font-weight:600;min-width:130px;color:rgba(255,255,255,0.85);}
+        .rbar-track{flex:1;height:10px;background:rgba(255,255,255,0.15);border-radius:5px;overflow:hidden;}
+        .rbar-fill{height:100%;border-radius:5px;transition:width 1.4s cubic-bezier(.22,1,.36,1);width:0;}
+        .rbar-val{font-size:14px;font-weight:700;min-width:60px;text-align:right;}
+
+        /* ── Packages ── */
+        .pkg-cards{display:flex;gap:16px;}
+        .pkg{
+            flex:1;padding:26px;border-radius:var(--radius-md);
+            border:1px solid var(--glass-border-light);
+            background:rgba(255,255,255,0.45);
+            backdrop-filter:var(--blur);
+            transition:all 0.3s;position:relative;overflow:hidden;
+        }
+        .pkg:hover{background:var(--surface-hover);box-shadow:var(--shadow-lg);transform:translateY(-3px);}
+        .pkg.featured{
+            background:linear-gradient(135deg,#2563eb,#0ea5e9,#06b6d4);
+            border-color:rgba(255,255,255,0.12);
+            color:white;
+            box-shadow:0 8px 32px rgba(37,99,235,0.22),inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+        .pkg.featured:hover{
+            transform:translateY(-2px) scale(1.015);
+            box-shadow:0 12px 40px rgba(37,99,235,0.28);
+        }
+        .pkg-badge{
+            display:inline-block;font-size:9.5px;font-weight:700;
+            text-transform:uppercase;letter-spacing:1px;
+            padding:3px 9px;border-radius:6px;margin-bottom:10px;
+        }
+        .pkg:not(.featured):not(.enterprise) .pkg-badge{background:rgba(0,0,0,0.05);color:var(--text-secondary);}
+        .pkg.featured .pkg-badge{background:var(--grad-accent);color:white;}
+        .pkg-name{font-size:17px;font-weight:700;margin-bottom:3px;}
+        .pkg-price{font-size:36px;font-weight:900;letter-spacing:-1.5px;line-height:1.1;}
+        .pkg-price span{font-size:15px;font-weight:500;opacity:0.55;}
+        .pkg-duration{font-size:12px;color:var(--text-secondary);margin-bottom:18px;}
+        .pkg.featured .pkg-duration{color:rgba(255,255,255,0.85);font-weight:500;}
+        .pkg-features{list-style:none;}
+        .pkg-features li{
+            font-size:12.5px;padding:6px 0;
+            display:flex;align-items:center;gap:7px;
+            border-bottom:1px solid rgba(0,0,0,0.03);
+        }
+        .pkg.featured .pkg-features li{border-color:rgba(255,255,255,0.10);}
+        .pkg-features li::before{
+            content:'';width:5px;height:5px;border-radius:50%;
+            background:var(--accent);flex-shrink:0;
+        }
+        .pkg-cta{
+            display:block;width:100%;margin-top:18px;padding:11px;
+            border:none;border-radius:var(--radius-sm);
+            font-family:inherit;font-size:13px;font-weight:600;
+            cursor:pointer;transition:all 0.2s;text-align:center;text-decoration:none;
+        }
+        .pkg:not(.featured):not(.enterprise) .pkg-cta{background:var(--grad-dark);color:white;}
+        .pkg.featured .pkg-cta{background:var(--grad-accent);color:white;}
+        .pkg-cta:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(0,0,0,0.12);}
+        .pkg.enterprise{
+            background:linear-gradient(135deg,#0ea5e9,#06b6d4,#14b8a6);
+            border-color:rgba(255,255,255,0.12);color:white;
+            display:flex;flex-direction:column;justify-content:center;
+            align-items:center;text-align:center;
+        }
+        .pkg.enterprise .pkg-desc{font-size:12.5px;opacity:0.6;line-height:1.5;max-width:210px;margin-bottom:18px;}
+
+        /* ── Risk cards ── */
+        .risk-card{
+            padding:22px;border-radius:var(--radius-md);
+            border:1px solid var(--glass-border-light);
+            background:rgba(255,255,255,0.45);
+            backdrop-filter:var(--blur);
+            transition:all 0.3s;
+        }
+        .risk-card:hover{
+            box-shadow:var(--shadow);
+            transform:translateY(-2px) scale(1.015);
+        }
+        .risk-level{
+            display:inline-block;font-size:9.5px;font-weight:700;
+            text-transform:uppercase;letter-spacing:1px;
+            padding:3px 9px;border-radius:6px;margin-bottom:10px;
+        }
+        .risk-level.high{background:rgba(220,38,38,0.08);color:var(--danger);}
+        .risk-level.medium{background:rgba(217,119,6,0.10);color:var(--warning);}
+        .risk-level.low{background:rgba(5,150,105,0.08);color:var(--success);}
+        .risk-title{font-size:15px;font-weight:700;margin-bottom:5px;}
+        .risk-desc{font-size:12.5px;color:var(--text-secondary);line-height:1.5;}
+        .risk-metric{
+            margin-top:14px;padding-top:14px;
+            border-top:1px solid rgba(0,0,0,0.04);
+            display:flex;align-items:baseline;gap:6px;
+        }
+        .risk-metric-val{font-size:26px;font-weight:800;letter-spacing:-1px;}
+        .risk-metric-label{font-size:11.5px;color:var(--text-secondary);}
+
+        /* ── Quote ── */
+        .quote{
+            padding:24px 28px;position:relative;
+            border-radius:var(--radius-md);
+        }
+        .quote::before{
+            content:'\201C';position:absolute;top:8px;left:20px;
+            font-size:56px;font-weight:900;opacity:0.06;line-height:1;
+        }
+        .quote-text{font-size:14px;font-weight:500;line-height:1.65;font-style:italic;}
+        .quote-source{margin-top:10px;font-size:11.5px;font-weight:600;color:rgba(255,255,255,0.85);}
+
+        /* ── Donut center ── */
+        .donut-center{
+            position:absolute;top:50%;left:50%;
+            transform:translate(-50%,-50%);text-align:center;
+        }
+        .donut-val{font-size:34px;font-weight:900;letter-spacing:-1px;}
+        .donut-label{font-size:10.5px;opacity:0.45;}
+
+        /* ── Section ── */
+        .section{margin-bottom:20px;}
+        .section:last-child{margin-bottom:0;}
+        .section-header{
+            display:flex;align-items:center;justify-content:space-between;
+            margin-bottom:14px;
+        }
+        .section-title{font-size:15px;font-weight:700;letter-spacing:-0.2px;}
+        .section-sub{font-size:12px;color:var(--text-secondary);}
+
+        .big-num{font-size:48px;font-weight:900;letter-spacing:-2px;line-height:1;}
+        .big-label{font-size:12.5px;color:var(--text-secondary);margin-top:5px;line-height:1.4;}
+
+        /* ── Live dot ── */
+        .live-dot{
+            width:7px;height:7px;border-radius:50%;
+            background:var(--success);display:inline-block;
+            animation:pulse 2s infinite;vertical-align:middle;
+        }
+        @keyframes pulse{
+            0%,100%{opacity:1;transform:scale(1);box-shadow:0 0 6px rgba(5,150,105,0.4);}
+            50%{opacity:0.5;transform:scale(0.8);box-shadow:0 0 12px rgba(5,150,105,0.6);}
+        }
+
+        /* ── Fade-in ── */
+        .fin{opacity:0;transform:translateY(18px) scale(0.98);animation:fu 0.65s cubic-bezier(.22,1,.36,1) forwards;}
+        @keyframes fu{to{opacity:1;transform:translateY(0) scale(1);}}
+        .fin:nth-child(1){animation-delay:.04s}
+        .fin:nth-child(2){animation-delay:.08s}
+        .fin:nth-child(3){animation-delay:.12s}
+        .fin:nth-child(4){animation-delay:.16s}
+
+        /* ── Footer ── */
+        .pg-footer{
+            display:flex;align-items:center;justify-content:space-between;
+            padding:16px 0;border-top:1px solid rgba(0,0,0,0.04);margin-top:20px;
+            font-size:11px;color:var(--text-secondary);
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar{width:5px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.10);border-radius:3px}
+
+        /* ═══════════════════════════════════════════ */
+        /* ── MOBILE NAV ──                            */
+        /* ═══════════════════════════════════════════ */
+        .mobile-nav-toggle{
+            display:none;
+            width:40px;height:40px;border-radius:var(--radius-sm);
+            background:var(--grad-accent);color:white;
+            border:none;cursor:pointer;
+            align-items:center;justify-content:center;
+            box-shadow:0 4px 12px var(--accent-glow);
+            transition:all 0.25s;
+            flex-shrink:0;
+        }
+        .mobile-nav-toggle svg{width:20px;height:20px;}
+        .mobile-nav-toggle:active{transform:scale(0.95);}
+
+        .sidebar-overlay{
+            position:fixed;inset:0;
+            background:rgba(15,23,42,0.50);
+            backdrop-filter:blur(6px);
+            -webkit-backdrop-filter:blur(6px);
+            z-index:99;
+            opacity:0;
+            pointer-events:none;
+            transition:opacity 0.3s;
+        }
+        .sidebar-overlay.open{opacity:1;pointer-events:auto;}
+
+        /* mobile-nav-toggle visibility handled in main responsive block */
+
+        /* ═══════════════════════════════════════════ */
+        /* ── GLOW & ANIMATION SYSTEM ──               */
+        /* ═══════════════════════════════════════════ */
+
+        /* Animated ambient blobs */
+        .blob{animation:blobFloat 20s ease-in-out infinite alternate;}
+        .blob-2{animation-delay:-7s;animation-duration:25s;}
+        .blob-3{animation-delay:-14s;animation-duration:18s;}
+        @keyframes blobFloat{
+            0%{transform:translate(0,0) scale(1);}
+            33%{transform:translate(30px,-40px) scale(1.05);}
+            66%{transform:translate(-20px,30px) scale(0.95);}
+            100%{transform:translate(15px,-15px) scale(1.02);}
+        }
+
+        /* Card-dark glow aura */
+        .card-dark{
+            position:relative;
+        }
+        .card-dark::after{
+            content:'';position:absolute;inset:-1px;
+            border-radius:inherit;
+            background:linear-gradient(135deg,rgba(37,99,235,0.35),rgba(6,182,212,0.25));
+            filter:blur(16px);
+            opacity:0;
+            transition:opacity 0.5s cubic-bezier(.4,0,.2,1);
+            z-index:-1;
+            pointer-events:none;
+        }
+        .card-dark:hover::after{opacity:1;}
+
+        /* Stat-card number count-up glow */
+        .stat-card .stat-value{
+            transition:text-shadow 0.4s;
+        }
+        .card-dark.stat-card:hover .stat-value{
+            text-shadow:0 0 20px rgba(255,255,255,0.3);
+        }
+        .card:not(.card-dark).stat-card:hover .stat-value{
+            text-shadow:0 0 20px rgba(37,99,235,0.2);
+        }
+
+        /* Logo icon glow pulse */
+        .logo-icon{
+            animation:logoGlow 3s ease-in-out infinite alternate;
+        }
+        @keyframes logoGlow{
+            0%{box-shadow:0 4px 12px var(--accent-glow);}
+            100%{box-shadow:0 4px 20px rgba(37,99,235,0.40),0 0 40px rgba(6,182,212,0.15);}
+        }
+
+        /* Active nav glow */
+        .nav-item.active{
+            animation:navGlow 3s ease-in-out infinite alternate;
+        }
+        @keyframes navGlow{
+            0%{box-shadow:0 6px 20px var(--accent-glow);}
+            100%{box-shadow:0 6px 28px rgba(37,99,235,0.35),0 0 44px rgba(6,182,212,0.12);}
+        }
+
+        /* Sidebar footer glow */
+        .sidebar-footer{
+            animation:navGlow 3s ease-in-out infinite alternate;
+        }
+
+        /* Live dot enhanced */
+        .live-dot{
+            box-shadow:0 0 6px rgba(5,150,105,0.4);
+        }
+
+        /* CTA button glow */
+        .topbar-cta{
+            animation:ctaGlow 3s ease-in-out infinite alternate;
+        }
+        @keyframes ctaGlow{
+            0%{box-shadow:0 4px 16px var(--accent-glow);}
+            100%{box-shadow:0 4px 24px rgba(37,99,235,0.38),0 0 44px rgba(6,182,212,0.12);}
+        }
+
+        /* Chart container subtle glow on dark cards */
+        .card-dark .chart-container canvas{
+            filter:drop-shadow(0 0 8px rgba(255,255,255,0.05));
+        }
+
+        /* Source tag hover */
+        .source-tag{transition:all 0.25s;}
+        .source-tag:hover{
+            transform:translateY(-1px);
+            box-shadow:0 2px 8px rgba(37,99,235,0.15);
+        }
+
+        /* Risk card colored left glow */
+        .risk-card{
+            border-left:3px solid transparent;
+            transition:all 0.3s, border-color 0.3s;
+        }
+        .risk-card:has(.risk-level.high){border-left-color:var(--danger);}
+        .risk-card:has(.risk-level.medium){border-left-color:var(--warning);}
+        .risk-card:has(.risk-level.low){border-left-color:var(--success);}
+        .risk-card:has(.risk-level.high):hover{
+            box-shadow:var(--shadow),-4px 0 20px rgba(220,38,38,0.12);
+        }
+        .risk-card:has(.risk-level.medium):hover{
+            box-shadow:var(--shadow),-4px 0 20px rgba(217,119,6,0.12);
+        }
+        .risk-card:has(.risk-level.low):hover{
+            box-shadow:var(--shadow),-4px 0 20px rgba(5,150,105,0.12);
+        }
+
+        /* Package featured glow */
+        .pkg.featured{position:relative;}
+        .pkg.featured::after{
+            content:'';position:absolute;inset:-1px;
+            border-radius:inherit;
+            background:linear-gradient(135deg,rgba(37,99,235,0.40),rgba(6,182,212,0.30));
+            filter:blur(20px);
+            opacity:0.5;
+            z-index:-1;
+            pointer-events:none;
+            animation:pkgGlow 3s ease-in-out infinite alternate;
+        }
+        @keyframes pkgGlow{
+            0%{opacity:0.3;filter:blur(16px);}
+            100%{opacity:0.55;filter:blur(24px);}
+        }
+
+        /* Enterprise glow */
+        .pkg.enterprise{position:relative;}
+        .pkg.enterprise::after{
+            content:'';position:absolute;inset:-1px;
+            border-radius:inherit;
+            background:linear-gradient(135deg,rgba(14,165,233,0.30),rgba(20,184,166,0.25));
+            filter:blur(18px);
+            opacity:0.35;
+            z-index:-1;
+            pointer-events:none;
+        }
+
+        /* CTA buttons glow on hover */
+        .pkg-cta:hover{
+            box-shadow:0 4px 20px rgba(37,99,235,0.25) !important;
+        }
+
+        /* Phase num glow on dark bg */
+        .card-dark .phase-num{
+            box-shadow:0 4px 16px rgba(0,0,0,0.10),0 0 24px rgba(255,255,255,0.08) !important;
+        }
+
+        /* Competency bar glow on fill */
+        .cbar-fill{
+            box-shadow:0 0 6px currentColor;
+            filter:brightness(1.1);
+        }
+        .rbar-fill{
+            box-shadow:0 0 8px currentColor;
+            filter:brightness(1.1);
+        }
+
+        /* Staggered grid entrance */
+        .grid>.fin:nth-child(5){animation-delay:.20s}
+        .grid>.fin:nth-child(6){animation-delay:.24s}
+        .grid>.fin:nth-child(7){animation-delay:.28s}
+        .grid>.fin:nth-child(8){animation-delay:.32s}
+
+        /* Content area subtle inner glow */
+        .content{
+            position:relative;
+        }
+        .content::before{
+            content:'';position:absolute;
+            top:0;left:50%;transform:translateX(-50%);
+            width:60%;height:1px;
+            background:linear-gradient(90deg,transparent,rgba(37,99,235,0.20),rgba(6,182,212,0.15),transparent);
+            border-radius:1px;
+        }
+
+        /* Topbar accent line */
+        .topbar{position:relative;}
+        .topbar::after{
+            content:'';position:absolute;
+            bottom:0;left:24px;right:24px;height:1px;
+            background:linear-gradient(90deg,transparent,rgba(37,99,235,0.12),rgba(6,182,212,0.10),transparent);
+        }
+
+        /* Sidebar brand glow text */
+        .sidebar-brand span{
+            background:linear-gradient(135deg,var(--text),var(--accent));
+            -webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;
+            background-clip:text;
+        }
+
+        /* Quote mark glow */
+        .card-dark.quote::before{
+            color:white;
+            opacity:0.12;
+            text-shadow:0 0 30px rgba(255,255,255,0.2);
+        }
+
+        /* Big numbers text gradient */
+        .big-num{
+            background:var(--grad-accent);
+            -webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;
+            background-clip:text;
+        }
+
+        /* Avatar ring */
+        .avatar{
+            box-shadow:0 0 0 2px rgba(255,255,255,0.25),0 2px 8px var(--accent-glow);
+        }
+
+        /* CTA hover enhanced */
+        .topbar-cta:active{
+            transform:translateY(0) scale(0.98);
+        }
+
+        /* ═══════════════════════════════════════════ */
+        /* ── RESPONSIVE ──                            */
+        /* ═══════════════════════════════════════════ */
+
+        /* Tablet landscape */
+        @media(max-width:1200px){
+            .grid-4{grid-template-columns:repeat(2,1fr);}
+            .grid-3{grid-template-columns:1fr 1fr;}
+            .grid-wide{grid-template-columns:1fr 1fr;}
+        }
+
+        /* Tablet portrait */
+        @media(max-width:900px){
+            /* Sidebar: hidden by default, slides in via JS */
+            .sidebar{
+                position:fixed;top:0;left:0;bottom:0;
+                width:280px;z-index:100;
+                transform:translateX(-100%);
+                transition:transform 0.35s cubic-bezier(.22,1,.36,1);
+                height:100vh !important;
+                border-radius:0 var(--radius) var(--radius) 0;
+                background:#f0f2f7 !important;
+                backdrop-filter:none !important;
+                -webkit-backdrop-filter:none !important;
+                box-shadow:none;
+                padding:24px 16px;
+                border:none !important;
+            }
+            .sidebar.open{
+                transform:translateX(0);
+                box-shadow:8px 0 40px rgba(15,23,42,0.20);
+            }
+            .mobile-nav-toggle{display:flex;}
+            .layout{padding:12px;gap:0;}
+            .main{width:100%;}
+            .content{padding:20px;border-radius:var(--radius-md);}
+            .topbar{
+                padding:12px 16px;border-radius:var(--radius-md);
+                margin-bottom:12px;
+            }
+            .topbar-left h1{font-size:18px;}
+            .topbar-left p{font-size:10.5px;}
+            .topbar-cta{padding:8px 14px;font-size:12px;white-space:nowrap;}
+            .grid-2,.grid-wide{grid-template-columns:1fr;}
+            .grid-3{grid-template-columns:1fr;}
+            .grid-4{grid-template-columns:1fr 1fr;}
+            .pkg-cards{flex-direction:column;}
+            .phase-timeline{flex-direction:column;gap:20px;}
+            .phase-timeline::before{display:none;}
+            .phase-item{text-align:left;display:flex;align-items:flex-start;gap:14px;padding:0;}
+            .phase-num{margin:0;flex-shrink:0;width:48px;height:48px;font-size:16px;}
+            .phase-desc{margin:0;max-width:none;}
+            .section{margin-bottom:16px;}
+            .card{padding:18px;}
+            .stat-value{font-size:26px;}
+            .stat-icon{width:38px;height:38px;}
+            .big-num{font-size:38px;}
+            .risk-metric-val{font-size:22px;}
+            .rbar-label{min-width:100px;font-size:11px;}
+            .rbar-val{font-size:12px;min-width:50px;}
+            .cbar-name{min-width:100px;font-size:11px;}
+            .pg-footer{flex-direction:column;gap:4px;text-align:center;}
+            /* Kill heavy animations on mobile for perf */
+            .blob{animation:none !important;}
+            .logo-icon{animation:none !important;}
+            .nav-item.active{animation:none !important;}
+            .sidebar-footer{animation:none !important;}
+            .topbar-cta{animation:none !important;}
+            .pkg.featured::after,.pkg.enterprise::after,.card-dark::after{display:none !important;}
+        }
+
+        /* Mobile */
+        @media(max-width:600px){
+            .layout{padding:8px;}
+            .content{padding:14px;border-radius:var(--radius-sm);}
+            .topbar{padding:10px 12px;border-radius:var(--radius-sm);}
+            .topbar-left{gap:8px !important;}
+            .topbar-left h1{font-size:15px;}
+            .topbar-left p{display:none;}
+            .topbar-cta{padding:7px 12px;font-size:11px;}
+            .topbar-cta svg{display:none;}
+            .topbar-right{flex-shrink:0;}
+            .grid-4{grid-template-columns:1fr 1fr;}
+            .card{padding:16px;border-radius:var(--radius-sm);}
+            .card-dark{border-radius:var(--radius-sm);}
+            .stat-value{font-size:24px;}
+            .stat-bg{font-size:56px;}
+            .stat-icon{width:36px;height:36px;border-radius:10px;}
+            .stat-label{font-size:11px;}
+            .source-tag{font-size:9px;padding:2px 6px;}
+            .card-title{font-size:13px;}
+            .card-header{margin-bottom:12px;}
+            .chart-container{height:200px;}
+            .section-title{font-size:14px;}
+            .section-sub{font-size:11px;}
+            .big-num{font-size:32px;}
+            .big-label{font-size:11px;}
+            .pkg{padding:18px;}
+            .pkg-name{font-size:15px;}
+            .pkg-price{font-size:28px;}
+            .pkg-price span{font-size:13px;}
+            .pkg-features li{font-size:12px;padding:5px 0;}
+            .pkg-cta{padding:10px;font-size:12.5px;}
+            .risk-card{padding:16px;}
+            .risk-title{font-size:14px;}
+            .risk-desc{font-size:12px;}
+            .risk-metric-val{font-size:20px;}
+            .risk-metric-label{font-size:10.5px;}
+            .quote{padding:16px 18px;}
+            .quote-text{font-size:13px;}
+            .quote::before{font-size:40px;}
+            .donut-val{font-size:28px;}
+            .donut-label{font-size:9px;}
+            .phase-num{width:42px;height:42px;}
+            .phase-num svg{width:18px;height:18px;}
+            .phase-title{font-size:13px;}
+            .phase-desc{font-size:11px;}
+            .phase-badge{font-size:10px;padding:2px 7px;}
+            .rbar-label{min-width:80px;font-size:10.5px;}
+            .rbar-track{height:8px;}
+            .rbar-val{font-size:11px;min-width:45px;}
+            .cbar-name{min-width:85px;font-size:11px;}
+            .cbar-track{height:6px;}
+            .cbar-val{font-size:11px;min-width:34px;}
+            .blob{opacity:0.15;}
+            .blob-1{width:350px;height:350px;}
+            .blob-2{width:250px;height:250px;}
+            .blob-3{display:none;}
+            /* Reduce motion */
+            .fin{animation-duration:0.35s !important;}
+            .page{animation-duration:0.3s !important;}
+        }
+
+        /* Small mobile */
+        @media(max-width:420px){
+            .grid-4{grid-template-columns:1fr;}
+            .topbar-left h1{font-size:14px;}
+            .topbar-cta{padding:6px 10px;font-size:10.5px;}
+            .mobile-nav-toggle{width:36px;height:36px;}
+            .mobile-nav-toggle svg{width:18px;height:18px;}
+            .card{padding:14px;}
+            .stat-value{font-size:22px;}
+            .pkg-price{font-size:26px;}
+            .big-num{font-size:28px;}
+        }
+    </style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="layout">
+
+    <!-- ═══ FLOATING SIDEBAR ═══ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="logo-icon">A</div>
+            <span>AUTOMTR.</span>
+        </div>
+        <div class="nav-divider"></div>
+
+        <nav>
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a class="nav-item active" data-page="dashboard" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    Dashboard
+                </a>
+                <a class="nav-item" data-page="marktdaten" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                    KI-Marktdaten
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Analyse</div>
+                <a class="nav-item" data-page="prozesse" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
+                    Audit-Prozess
+                    <span class="badge">4</span>
+                </a>
+                <a class="nav-item" data-page="benchmark" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Branchen-Benchmark
+                </a>
+                <a class="nav-item" data-page="roi" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    ROI-Prognosen
+                </a>
+                <a class="nav-item" data-page="risiko" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Risiko-Assessment
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Angebot</div>
+                <a class="nav-item" data-page="pakete" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    Audit-Pakete
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-row">
+                <div class="avatar">OK</div>
+                <div>
+                    <div class="user-name">Oliver Kol</div>
+                    <div class="user-role">Strategy & Implementation</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══ MAIN ═══ -->
+    <div class="main">
+
+        <!-- Topbar -->
+        <div class="topbar">
+            <div class="topbar-left" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+                <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Menü öffnen">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div style="min-width:0;">
+                <h1 id="pageTitle" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Dashboard</h1>
+                <p><span class="live-dot"></span>&nbsp;<span id="pageSub">Live-Marktdaten Q1 2026 — PwC, BCG, Deloitte, McKinsey</span></p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <a href="mailto:oliver@automtr.ai" class="topbar-cta">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Audit anfragen
+                </a>
+            </div>
+        </div>
+
+        <!-- Content wrapper -->
+        <div class="content">
+
+            <!-- ══ PAGE: DASHBOARD ══ -->
+            <div class="page active" id="page-dashboard">
+                <div class="section">
+                    <div class="grid grid-4">
+                        <div class="card stat-card fin">
+                            <div class="stat-icon" style="background:var(--grad-accent-soft);color:var(--accent);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            </div>
+                            <div class="stat-value">41 %</div>
+                            <div class="stat-label">der dt. Unternehmen nutzen KI</div>
+                            <span class="source-tag">Bitkom 2026</span>
+                            <span class="stat-change up">+32 pp seit 2022</span>
+                            <div class="stat-bg">41</div>
+                        </div>
+                        <div class="card card-dark stat-card fin">
+                            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(220,38,38,0.10),rgba(248,113,113,0.08));color:var(--danger);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            </div>
+                            <div class="stat-value" style="color:var(--danger);">74 %</div>
+                            <div class="stat-label">erzielen keinen messbaren Wert</div>
+                            <span class="source-tag">BCG AI Radar 2025</span>
+                            <span class="stat-change down">Kritischer Gap</span>
+                            <div class="stat-bg">74</div>
+                        </div>
+                        <div class="card stat-card fin">
+                            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(5,150,105,0.10),rgba(52,211,153,0.06));color:var(--success);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                            </div>
+                            <div class="stat-value" style="color:var(--success);">3,50 &euro;</div>
+                            <div class="stat-label">ROI pro 1 &euro; KI-Invest</div>
+                            <span class="source-tag">Accenture 2025</span>
+                            <span class="stat-change up">+250 % Return</span>
+                            <div class="stat-bg">3.5</div>
+                        </div>
+                        <div class="card card-dark stat-card fin">
+                            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(14,165,233,0.10),rgba(6,182,212,0.08));color:#0ea5e9;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                            </div>
+                            <div class="stat-value">3&times;</div>
+                            <div class="stat-label">schnelleres Wachstum bei KI-Einsatz</div>
+                            <span class="source-tag">PwC 2025</span>
+                            <span class="stat-change neutral">AI Jobs Barometer</span>
+                            <div class="stat-bg">3x</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="grid grid-wide">
+                        <div class="card fin">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">KI-Adoption in Deutschland</div>
+                                    <div class="card-subtitle">Anteil Unternehmen mit KI-Einsatz</div>
+                                </div>
+                                <span style="font-size:10.5px;background:var(--grad-accent);color:white;padding:2px 9px;border-radius:6px;font-weight:600;">Jährlich</span>
+                            </div>
+                            <div class="chart-container"><canvas id="adoptionChart"></canvas></div>
+                        </div>
+                        <div class="card card-dark fin">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">KI-Wertschöpfung</div>
+                                    <div class="card-subtitle">Wer erzielt messbaren Wert?</div>
+                                </div>
+                            </div>
+                            <div class="chart-container" style="height:185px;position:relative;">
+                                <canvas id="valueDonut"></canvas>
+                                <div class="donut-center">
+                                    <div class="donut-val" style="color:white;">26 %</div>
+                                    <div class="donut-label" style="color:var(--text-secondary);">erzielen Wert</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:16px;margin-top:14px;justify-content:center;">
+                                <div style="display:flex;align-items:center;gap:5px;font-size:11px;"><span style="width:8px;height:8px;border-radius:3px;background:var(--accent);display:inline-block;"></span>Signifikant (25 %)</div>
+                                <div style="display:flex;align-items:center;gap:5px;font-size:11px;"><span style="width:8px;height:8px;border-radius:3px;background:rgba(255,255,255,0.18);display:inline-block;"></span>Kein Wert (74 %)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card card-dark quote fin">
+                    <div class="quote-text">"Der entscheidende Unterschied zwischen KI-Gewinnern und -Verlierern liegt nicht im Zugang zur Technologie — sondern in der Fähigkeit, die richtigen Use Cases zu identifizieren und konsequent umzusetzen."</div>
+                    <div class="quote-source">— BCG AI Radar 2025</div>
+                </div>
+                <div class="pg-footer"><div><strong>AUTOMTR.</strong> — www.automtr.ai</div><div>Vertraulich &middot; März 2026</div></div>
+            </div>
+
+            <!-- ══ PAGE: MARKTDATEN ══ -->
+            <div class="page" id="page-marktdaten">
+                <div class="section">
+                    <div class="grid grid-4">
+                        <div class="card card-dark fin" style="text-align:center;"><div style="font-size:40px;font-weight:900;letter-spacing:-1px;">80 %</div><div style="font-size:11.5px;color:var(--text-secondary);margin-top:3px;line-height:1.4;">Routine-Anfragen automatisierbar</div><span class="source-tag">Gartner 2024</span></div>
+                        <div class="card card-dark fin" style="text-align:center;"><div style="font-size:40px;font-weight:900;letter-spacing:-1px;">66 %</div><div style="font-size:11.5px;color:var(--text-secondary);margin-top:3px;line-height:1.4;">berichten Effizienzgewinne</div><span class="source-tag">Deloitte 2025</span></div>
+                        <div class="card card-dark fin" style="text-align:center;"><div style="font-size:40px;font-weight:900;letter-spacing:-1px;">5 Std.</div><div style="font-size:11.5px;color:var(--text-secondary);margin-top:3px;line-height:1.4;">Ersparnis pro Woche / GenAI-Nutzer</div><span class="source-tag">BCG 2025</span></div>
+                        <div class="card card-dark fin" style="text-align:center;"><div style="font-size:40px;font-weight:900;letter-spacing:-1px;">56 %</div><div style="font-size:11.5px;color:var(--text-secondary);margin-top:3px;line-height:1.4;">höhere Gehaltsprämie KI-Skills</div><span class="source-tag">PwC 2025</span></div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="grid grid-2">
+                        <div class="card fin">
+                            <div class="card-header"><div class="card-title">KI-Adoption: Wachstumskurve</div></div>
+                            <div class="chart-container"><canvas id="adoptionChart2"></canvas></div>
+                        </div>
+                        <div class="card fin">
+                            <div class="card-header"><div class="card-title">Produktivitätssteigerung durch GenAI</div></div>
+                            <div style="text-align:center;padding:16px 0;">
+                                <div class="big-num" style="color:var(--accent);">13 %</div>
+                                <div class="big-label">Steigerung pro Jahr</div>
+                                <span class="source-tag">IW Köln 2025</span>
+                            </div>
+                            <div style="margin-top:20px;">
+                                <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px;"><span style="font-weight:600;">Zeitersparnis / Woche</span><span style="font-weight:700;">5 Std.</span></div>
+                                <div style="height:8px;background:rgba(0,0,0,0.04);border-radius:4px;overflow:hidden;"><div class="cbar-fill" data-width="62" style="background:linear-gradient(90deg,#2563eb,#06b6d4);"></div></div>
+                            </div>
+                            <div style="margin-top:14px;">
+                                <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px;"><span style="font-weight:600;">Gehaltsprämie KI-Skills</span><span style="font-weight:700;">+56 %</span></div>
+                                <div style="height:8px;background:rgba(0,0,0,0.04);border-radius:4px;overflow:hidden;"><div class="cbar-fill" data-width="56" style="background:linear-gradient(90deg,var(--success),#34d399);"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card card-dark fin" style="padding:24px 28px;">
+                    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:200px;">
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent-light);margin-bottom:8px;">Die Ausgangslage</div>
+                            <div style="font-size:14px;line-height:1.65;">KI-Adoption hat sich seit 2022 mehr als <strong>vervierfacht</strong> — von 9 % auf 41 %. Gleichzeitig erzielen <strong>74 %</strong> keinen messbaren Wert. Der Unterschied liegt in der Methode.</div>
+                        </div>
+                        <div style="display:flex;gap:20px;align-items:center;">
+                            <div style="text-align:center;"><div style="font-size:30px;font-weight:900;">9 %</div><div style="font-size:10.5px;color:var(--text-secondary);">2022</div></div>
+                            <div style="color:var(--accent);font-size:22px;">&#8594;</div>
+                            <div style="text-align:center;"><div style="font-size:30px;font-weight:900;color:var(--accent);">41 %</div><div style="font-size:10.5px;color:var(--text-secondary);">2026</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pg-footer"><div><strong>AUTOMTR.</strong> — www.automtr.ai</div><div>Quellen: Bitkom, BCG, PwC, Deloitte, IW Köln, Gartner</div></div>
+            </div>
+
+            <!-- ══ PAGE: AUDIT-PROZESS ══ -->
+            <div class="page" id="page-prozesse">
+                <!-- Hero timeline -->
+                <div class="section">
+                    <div class="card card-dark fin" style="padding:40px 36px 36px;position:relative;">
+                        <div style="position:absolute;top:20px;right:28px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.50);text-transform:uppercase;letter-spacing:1.2px;">3-Phasen-Modell</div>
+                        <div style="font-size:20px;font-weight:800;margin-bottom:6px;">Vom Audit zur Wirkung</div>
+                        <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-bottom:32px;">Kein langwieriges Consulting-Projekt. Ergebnis innerhalb von Werktagen.</div>
+                        <div class="phase-timeline">
+                            <div class="phase-item">
+                                <div class="phase-num" style="background:rgba(255,255,255,0.18);box-shadow:0 4px 16px rgba(0,0,0,0.10);">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                </div>
+                                <div class="phase-title" style="color:white;">Analyse & Erstgespräch</div>
+                                <div class="phase-desc" style="color:rgba(255,255,255,0.70);">Vollständige Prozesserfassung. Branchenvergleich mit PwC, Deloitte & KPMG.</div>
+                                <span class="phase-badge" style="background:rgba(255,255,255,0.15);color:white;">Woche 1</span>
+                            </div>
+                            <div class="phase-item">
+                                <div class="phase-num" style="background:rgba(255,255,255,0.25);box-shadow:0 4px 16px rgba(0,0,0,0.10);">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                </div>
+                                <div class="phase-title" style="color:white;">Potenziale & Report</div>
+                                <div class="phase-desc" style="color:rgba(255,255,255,0.70);">Schwachstellen, Automatisierungspotenziale, priorisierte Empfehlungen mit ROI.</div>
+                                <span class="phase-badge" style="background:rgba(255,255,255,0.15);color:white;">Woche 1-2</span>
+                            </div>
+                            <div class="phase-item">
+                                <div class="phase-num" style="background:rgba(255,255,255,0.30);box-shadow:0 4px 16px rgba(0,0,0,0.10);">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                </div>
+                                <div class="phase-title" style="color:white;">Implementierung</div>
+                                <div class="phase-desc" style="color:rgba(255,255,255,0.70);">Von der ersten Automatisierung bis zum skalierten Regelbetrieb.</div>
+                                <span class="phase-badge" style="background:rgba(255,255,255,0.15);color:white;">Fortlaufend</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4 Analysefelder -->
+                <div class="section">
+                    <div class="section-header"><span class="section-title">4 Analysefelder</span><span class="section-sub">Jedes mit konkretem Handlungspotenzial</span></div>
+                    <div class="grid grid-4">
+                        <div class="card fin" style="text-align:center;padding:28px 18px;">
+                            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(37,99,235,0.10),rgba(6,182,212,0.06));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            </div>
+                            <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">01 &middot; Woche 1</div>
+                            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Prozessanalyse</div>
+                            <div style="font-size:12px;color:var(--text-secondary);line-height:1.55;">Welche Abläufe sind automatisierbar? Wo verliert Ihr Team Zeit?</div>
+                        </div>
+                        <div class="card fin" style="text-align:center;padding:28px 18px;">
+                            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(5,150,105,0.10),rgba(52,211,153,0.06));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                            </div>
+                            <div style="font-size:10px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">02 &middot; Woche 1</div>
+                            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Markt-Benchmark</div>
+                            <div style="font-size:12px;color:var(--text-secondary);line-height:1.55;">Vergleich gegen Branchenstandard mit PwC, Deloitte & KPMG.</div>
+                        </div>
+                        <div class="card fin" style="text-align:center;padding:28px 18px;">
+                            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(14,165,233,0.10),rgba(6,182,212,0.06));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                            </div>
+                            <div style="font-size:10px;font-weight:700;color:#0ea5e9;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">03 &middot; Woche 1-2</div>
+                            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Potenzial-Identifikation</div>
+                            <div style="font-size:12px;color:var(--text-secondary);line-height:1.55;">Top-3-Hebel mit ROI, Zeitaufwand und technischem Ansatz.</div>
+                        </div>
+                        <div class="card fin" style="text-align:center;padding:28px 18px;">
+                            <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(217,119,6,0.10),rgba(251,191,36,0.06));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <div style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">04 &middot; Woche 2</div>
+                            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Risiko-Assessment</div>
+                            <div style="font-size:12px;color:var(--text-secondary);line-height:1.55;">Was passiert, wenn Wettbewerber schneller automatisieren?</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ergebnis-Kacheln -->
+                <div class="section">
+                    <div class="grid grid-4">
+                        <div class="card card-dark fin" style="text-align:center;padding:24px 16px;">
+                            <div style="font-size:36px;font-weight:900;">2,1&times;</div>
+                            <div style="font-size:11.5px;color:rgba(255,255,255,0.80);margin-top:4px;">mehr ROI mit Potenzialanalyse</div>
+                        </div>
+                        <div class="card card-dark fin" style="text-align:center;padding:24px 16px;">
+                            <div style="font-size:36px;font-weight:900;">7 WT</div>
+                            <div style="font-size:11.5px;color:rgba(255,255,255,0.80);margin-top:4px;">bis zum fertigen Audit-Report</div>
+                        </div>
+                        <div class="card card-dark fin" style="text-align:center;padding:24px 16px;">
+                            <div style="font-size:36px;font-weight:900;">3–4</div>
+                            <div style="font-size:11.5px;color:rgba(255,255,255,0.80);margin-top:4px;">priorisierte Use Cases</div>
+                        </div>
+                        <div class="card card-dark fin" style="text-align:center;padding:24px 16px;">
+                            <div style="font-size:36px;font-weight:900;">100 %</div>
+                            <div style="font-size:11.5px;color:rgba(255,255,255,0.80);margin-top:4px;">datenbasiert — keine Vermutungen</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pg-footer"><div><strong>AUTOMTR.</strong> — www.automtr.ai</div><div>Vertraulich &middot; März 2026</div></div>
+            </div>
+
+            <!-- ══ PAGE: BENCHMARK ══ -->
+            <div class="page" id="page-benchmark">
+                <div class="section">
+                    <div class="grid grid-2">
+                        <div class="card fin">
+                            <div class="card-header"><div class="card-title">KI-Readiness nach Dimension</div></div>
+                            <div style="font-size:11.5px;color:var(--text-secondary);margin-bottom:18px;">Durchschnitt dt. Unternehmen (McKinsey/Stifterverband 2025)</div>
+                            <div style="display:flex;flex-direction:column;gap:10px;">
+                                <div class="cbar-row"><span class="cbar-name">KI-Strategie</span><div class="cbar-track"><div class="cbar-fill" data-width="35" style="background:linear-gradient(90deg,#1e3a5f,#334155);"></div></div><span class="cbar-val" style="color:#64748b;">35 %</span></div>
+                                <div class="cbar-row"><span class="cbar-name">Datenqualität</span><div class="cbar-track"><div class="cbar-fill" data-width="48" style="background:linear-gradient(90deg,#2563eb,#3b82f6);"></div></div><span class="cbar-val" style="color:var(--accent);">48 %</span></div>
+                                <div class="cbar-row"><span class="cbar-name">KI-Kompetenzen</span><div class="cbar-track"><div class="cbar-fill" data-width="21" style="background:linear-gradient(90deg,#1e3a5f,#334155);"></div></div><span class="cbar-val" style="color:#64748b;">21 %</span></div>
+                                <div class="cbar-row"><span class="cbar-name">Automatisierung</span><div class="cbar-track"><div class="cbar-fill" data-width="41" style="background:linear-gradient(90deg,#2563eb,#0ea5e9);"></div></div><span class="cbar-val" style="color:var(--accent);">41 %</span></div>
+                                <div class="cbar-row"><span class="cbar-name">Change Mgmt</span><div class="cbar-track"><div class="cbar-fill" data-width="29" style="background:linear-gradient(90deg,#1e3a5f,#334155);"></div></div><span class="cbar-val" style="color:#64748b;">29 %</span></div>
+                                <div class="cbar-row"><span class="cbar-name">Budget-Allokation</span><div class="cbar-track"><div class="cbar-fill" data-width="38" style="background:linear-gradient(90deg,#0ea5e9,#22d3ee);"></div></div><span class="cbar-val" style="color:#0ea5e9;">38 %</span></div>
+                            </div>
+                        </div>
+                        <div class="card card-dark fin">
+                            <div class="card-header"><div class="card-title">Durchschnitt vs. KI-Leader</div></div>
+                            <div class="chart-container" style="height:210px;"><canvas id="competencyRadar"></canvas></div>
+                            <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.10);">
+                                <div style="font-size:34px;font-weight:900;color:var(--accent);">79 %</div>
+                                <div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">fehlen grundlegende KI-Kompetenzen</div>
+                                <span class="source-tag">McKinsey/Stifterverband 2025</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-header"><span class="section-title">Automatisierungspotenzial nach Bereich</span></div>
+                    <div class="grid grid-3">
+                        <div class="card fin" style="text-align:center;"><div style="font-size:12.5px;font-weight:600;margin-bottom:10px;">Kundenservice</div><div class="big-num" style="color:var(--accent);font-size:42px;">80 %</div><div class="big-label">automatisierbar</div><span class="source-tag">Gartner 2024</span></div>
+                        <div class="card fin" style="text-align:center;"><div style="font-size:12.5px;font-weight:600;margin-bottom:10px;">Back-Office & Admin</div><div class="big-num" style="color:var(--success);font-size:42px;">66 %</div><div class="big-label">Effizienzgewinne möglich</div><span class="source-tag">Deloitte 2025</span></div>
+                        <div class="card fin" style="text-align:center;"><div style="font-size:12.5px;font-weight:600;margin-bottom:10px;">Wissensarbeit</div><div class="big-num" style="color:#06b6d4;font-size:42px;">5 Std.</div><div class="big-label">Ersparnis / Woche / Person</div><span class="source-tag">BCG 2025</span></div>
+                    </div>
+                </div>
+                <div class="pg-footer"><div><strong>AUTOMTR.</strong> — www.automtr.ai</div><div>Benchmark: PwC, Deloitte, McKinsey, KPMG</div></div>
+            </div>
+
+            <!-- ══ PAGE: ROI ══ -->
+            <div class="page" id="page-roi">
+                <div class="section">
+                    <div class="grid grid-2">
+                        <div class="card card-dark fin" style="padding:28px;">
+                            <div class="card-header"><div class="card-title">ROI-Zeitrahmen: Ohne vs. Mit Audit</div></div>
+                            <div style="display:flex;flex-direction:column;gap:12px;">
+                                <div style="font-size:11px;color:var(--text-secondary);font-weight:600;">Amortisierung</div>
+                                <div class="rbar-row"><span class="rbar-label">Ohne Audit</span><div class="rbar-track"><div class="rbar-fill" data-width="85" style="background:linear-gradient(90deg,#1e3a5f,#334155);"></div></div><span class="rbar-val" style="color:rgba(255,255,255,0.70);">2-4 J.</span></div>
+                                <div class="rbar-row"><span class="rbar-label">Mit Audit</span><div class="rbar-track"><div class="rbar-fill" data-width="30" style="background:linear-gradient(90deg,#22d3ee,#67e8f9);"></div></div><span class="rbar-val" style="color:white;">8-14 Mo</span></div>
+                                <div style="border-top:1px solid rgba(255,255,255,0.10);padding-top:14px;margin-top:4px;">
+                                    <div style="font-size:11px;color:var(--text-secondary);font-weight:600;margin-bottom:8px;">Wachstum & Return</div>
+                                    <div class="rbar-row"><span class="rbar-label">Umsatzwachstum</span><div class="rbar-track"><div class="rbar-fill" data-width="70" style="background:linear-gradient(90deg,#2563eb,#3b82f6);"></div></div><span class="rbar-val" style="color:white;">2,5&times;</span></div>
+                                    <div class="rbar-row"><span class="rbar-label">ROI pro 1 &euro;</span><div class="rbar-track"><div class="rbar-fill" data-width="88" style="background:linear-gradient(90deg,#06b6d4,#22d3ee);"></div></div><span class="rbar-val" style="color:white;">3,50 &euro;</span></div>
+                                </div>
+                            </div>
+                            <div style="font-size:10.5px;color:var(--text-secondary);margin-top:18px;">Quellen: Deloitte 2025, Accenture 2024/2025</div>
+                        </div>
+                        <div class="card fin">
+                            <div class="card-header"><div class="card-title">ROI-Vergleich nach Studien</div></div>
+                            <div class="chart-container" style="height:260px;"><canvas id="roiBarChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="grid grid-4">
+                        <div class="card fin" style="text-align:center;"><div style="font-size:42px;font-weight:900;letter-spacing:-1px;color:var(--accent);">3,50 &euro;</div><div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">Return pro 1 &euro;</div><span class="source-tag">Accenture 2025</span></div>
+                        <div class="card fin" style="text-align:center;"><div style="font-size:42px;font-weight:900;letter-spacing:-1px;color:#64748b;">2-4 J.</div><div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">ROI ohne Audit</div><span class="source-tag">Deloitte 2025</span></div>
+                        <div class="card fin" style="text-align:center;"><div style="font-size:42px;font-weight:900;letter-spacing:-1px;color:#06b6d4;">8-14</div><div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">Monate mit Audit</div><span class="source-tag">Benchmark 2025</span></div>
+                        <div class="card fin" style="text-align:center;"><div style="font-size:42px;font-weight:900;letter-spacing:-1px;color:var(--accent);">2,5&times;</div><div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">Umsatzwachstum</div><span class="source-tag">Accenture 2024</span></div>
+                    </div>
+                </div>
+                <div class="card card-dark quote fin">
+                    <div class="quote-text">"Unternehmen, die KI fokussiert einführen, reduzieren ihren ROI-Zeitraum von 2-4 Jahren auf 8-14 Monate — und erzielen 2,5&times; höheres Wachstum als Wettbewerber ohne Strategie."</div>
+                    <div class="quote-source">— AUTOMTR Analyse, Deloitte & Accenture 2025</div>
+                </div>
+                <div class="pg-footer"><div><strong>AUTOMTR.</strong> — www.automtr.ai</div><div>ROI: Accenture, Deloitte, PwC</div></div>
+            </div>
+
+            <!-- ══ PAGE: RISIKO ══ -->
+            <div class="page" id="page-risiko">
+                <!-- Risiko-Übersicht hero -->
+                <div class="section">
+                    <div class="card card-dark fin" style="padding:32px 36px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;">
+                            <div style="max-width:420px;">
+                                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,0.55);margin-bottom:8px;">Risiko-Analyse</div>
+                                <div style="font-size:22px;font-weight:800;margin-bottom:8px;">Was passiert, wenn Sie nicht handeln?</div>
+                                <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.6;">Fünf datenbasierte Szenarien zeigen die konkreten Konsequenzen von KI-Inaktivität — und wie ein strukturierter Audit jedes einzelne adressiert.</div>
+                            </div>
+                            <div style="display:flex;gap:16px;">
+                                <div style="text-align:center;background:rgba(255,255,255,0.10);border-radius:14px;padding:18px 22px;">
+                                    <div style="font-size:28px;font-weight:900;">5</div>
+                                    <div style="font-size:10.5px;color:rgba(255,255,255,0.70);margin-top:2px;">Risiko-<br>Szenarien</div>
+                                </div>
+                                <div style="text-align:center;background:rgba(255,255,255,0.10);border-radius:14px;padding:18px 22px;">
+                                    <div style="font-size:28px;font-weight:900;">2</div>
+                                    <div style="font-size:10.5px;color:rgba(255,255,255,0.70);margin-top:2px;">Hohes<br>Risiko</div>
+                                </div>
+                                <div style="text-align:center;background:rgba(255,255,255,0.10);border-radius:14px;padding:18px 22px;">
+                                    <div style="font-size:28px;font-weight:900;">1</div>
+                                    <div style="font-size:10.5px;color:rgba(255,255,255,0.70);margin-top:2px;">Audit als<br>Lösung</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risiko-Grid mit Icons -->
+                <div class="section">
+                    <div class="grid grid-3">
+                        <div class="risk-card fin">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,rgba(220,38,38,0.10),rgba(248,113,113,0.06));display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                                </div>
+                                <span class="risk-level high" style="margin-bottom:0;">Hohes Risiko</span>
+                            </div>
+                            <div class="risk-title">Wettbewerber automatisieren schneller</div>
+                            <div class="risk-desc">Unternehmen mit KI-Einsatz wachsen 3&times; schneller. Wer jetzt nicht handelt, verliert Marktanteile an agilere Konkurrenten.</div>
+                            <div class="risk-metric"><div class="risk-metric-val" style="color:var(--danger);">3&times;</div><div class="risk-metric-label">Wachstum KI-Leader (PwC 2025)</div></div>
+                        </div>
+                        <div class="risk-card fin">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,rgba(220,38,38,0.10),rgba(248,113,113,0.06));display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
+                                </div>
+                                <span class="risk-level high" style="margin-bottom:0;">Hohes Risiko</span>
+                            </div>
+                            <div class="risk-title">Fehlende KI-Kompetenzen</div>
+                            <div class="risk-desc">79 % der Unternehmen fehlen Grundlagen. Ohne Upskilling wird der Kompetenz-Gap zur operativen Bremse.</div>
+                            <div class="risk-metric"><div class="risk-metric-val" style="color:var(--danger);">79 %</div><div class="risk-metric-label">ohne Kompetenzen (McKinsey 2025)</div></div>
+                        </div>
+                        <div class="risk-card fin">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,rgba(217,119,6,0.10),rgba(251,191,36,0.06));display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                </div>
+                                <span class="risk-level medium" style="margin-bottom:0;">Mittleres Risiko</span>
+                            </div>
+                            <div class="risk-title">Investition ohne Strategie</div>
+                            <div class="risk-desc">74 % erzielen keinen messbaren Wert aus KI. Ohne Use-Case-Priorisierung verbrennt KI Budget statt Wert.</div>
+                            <div class="risk-metric"><div class="risk-metric-val" style="color:var(--warning);">74 %</div><div class="risk-metric-label">ohne KI-Wert (BCG 2025)</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="grid grid-2">
+                        <div class="risk-card fin">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,rgba(217,119,6,0.10),rgba(251,191,36,0.06));display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/><path d="M12 13v3"/><path d="M9 19l3 3 3-3"/></svg>
+                                </div>
+                                <span class="risk-level medium" style="margin-bottom:0;">Mittleres Risiko</span>
+                            </div>
+                            <div class="risk-title">Talentabwanderung</div>
+                            <div class="risk-desc">KI-Skills bringen 56 % mehr Gehalt. Ohne attraktives KI-Umfeld wandern Top-Talente zur Konkurrenz ab.</div>
+                            <div class="risk-metric"><div class="risk-metric-val" style="color:var(--warning);">56 %</div><div class="risk-metric-label">Gehaltsprämie KI-Skills (PwC 2025)</div></div>
+                        </div>
+                        <div class="risk-card fin">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,rgba(5,150,105,0.10),rgba(52,211,153,0.06));display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                </div>
+                                <span class="risk-level low" style="margin-bottom:0;">Beherrschbar</span>
+                            </div>
+                            <div class="risk-title">Operativer Effizienzverlust</div>
+                            <div class="risk-desc">GenAI-Nutzer sparen 5 Std./Woche. Ohne KI-Tools verlieren Sie kumuliert erhebliche Produktivität.</div>
+                            <div class="risk-metric"><div class="risk-metric-val" style="color:var(--success);">5 Std.</div><div class="risk-metric-label">pro Woche / Person (BCG 2025)</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mitigation CTA -->
+                <div class="card card-dark fin" style="padding:28px 32px;">
+                    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                        <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                        </div>
+                        <div style="flex:1;min-width:200px;">
+                            <div style="font-size:17px;font-weight:700;margin-bottom:4px;">Alle Risiken adressiert — durch einen Audit</div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.80);line-height:1.6;">Use-Case-Priorisierung, Kompetenzlücken, ROI-Quantifizierung und datenbasierte Roadmap — bevor Budget in die falsche Richtung fließt.</div>
+                        </div>
+                        <div style="display:flex;gap:10px;">
+                            <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:12px 16px;text-align:center;">
+                                <div style="font-size:20px;font-weight:800;">7 WT</div>
+                                <div style="font-size:10px;color:rgba(255,255,255,0.65);">zum Report</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:12px 16px;text-align:center;">
+                                <div style="font-size:20px;font-weight:800;">2.000 &euro;</div>
+                                <div style="font-size:10px;color:rgba(255,255,255,0.65);">ab Minimum</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pg-footer"><div><strong>AUTOMTR.</strong> — www.automtr.ai</div><div>Framework: BCG, McKinsey, PwC</div></div>
+            </div>
+
+            <!-- ══ PAGE: PAKETE ══ -->
+            <div class="page" id="page-pakete">
+                <div class="section">
+                    <div class="section-header"><span class="section-title">Wählen Sie Ihren Einstieg</span><span class="section-sub">Sofort umsetzbare Ergebnisse — kein monatelanges Consulting</span></div>
+                    <div class="pkg-cards">
+                        <div class="pkg fin">
+                            <span class="pkg-badge">Audit Minimum</span>
+                            <div class="pkg-name">Ihr erster Schritt.</div>
+                            <div class="pkg-price">2.000 &euro; <span>einmalig</span></div>
+                            <div class="pkg-duration">Ergebnis innerhalb 7 Werktagen</div>
+                            <ul class="pkg-features"><li>Vollständige Prozessanalyse</li><li>Abgleich PwC/Deloitte/KPMG-Studien</li><li>Kritische Automatisierungspotenziale</li><li>Schriftlicher Audit-Report</li></ul>
+                            <a class="pkg-cta" href="#">Audit anfragen</a>
+                        </div>
+                        <div class="pkg featured fin">
+                            <span class="pkg-badge">Beliebt</span>
+                            <div class="pkg-name">Audit Plus</div>
+                            <div class="pkg-price">3.500 &euro; <span>einmalig</span></div>
+                            <div class="pkg-duration">Ergebnis innerhalb 12 Werktagen</div>
+                            <ul class="pkg-features"><li>Alles aus "Audit Minimum"</li><li>Top-3-Hebel mit sofortiger Wirkung</li><li>Individueller Umsetzungsfahrplan</li><li>ROI-Prognose je Feld</li></ul>
+                            <a class="pkg-cta" href="#">Audit Plus anfragen</a>
+                        </div>
+                        <div class="pkg enterprise fin">
+                            <span class="pkg-badge" style="background:rgba(255,255,255,0.15);color:white;">Enterprise</span>
+                            <div class="pkg-name" style="font-size:20px;margin-bottom:10px;">Auf Anfrage</div>
+                            <div class="pkg-desc">Mehrere Abteilungen / Standorte. Inkl. Monitoring, quartalsweisem Review, dediziertem Ansprechpartner.</div>
+                            <a class="pkg-cta" href="mailto:oliver@automtr.ai" style="background:white;color:#0f172a;">Kontakt aufnehmen</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="grid grid-2">
+                        <div class="card fin" style="padding:24px;">
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent);margin-bottom:14px;">So starten Sie</div>
+                            <div style="display:flex;flex-direction:column;gap:14px;">
+                                <div style="display:flex;align-items:flex-start;gap:10px;">
+                                    <div style="width:30px;height:30px;border-radius:50%;background:var(--grad-dark);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">1</div>
+                                    <div><div style="font-size:13.5px;font-weight:600;">Kontakt aufnehmen</div><div style="font-size:12px;color:var(--text-secondary);">Erstgespräch buchen — Reaktionszeit &lt; 24h.</div></div>
+                                </div>
+                                <div style="display:flex;align-items:flex-start;gap:10px;">
+                                    <div style="width:30px;height:30px;border-radius:50%;background:var(--grad-accent);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">2</div>
+                                    <div><div style="font-size:13.5px;font-weight:600;">Erstgespräch (30 Min.)</div><div style="font-size:12px;color:var(--text-secondary);">Prozesse, Ziele und Kennzahlen erfassen.</div></div>
+                                </div>
+                                <div style="display:flex;align-items:flex-start;gap:10px;">
+                                    <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#06b6d4);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">3</div>
+                                    <div><div style="font-size:13.5px;font-weight:600;">Audit-Ergebnis</div><div style="font-size:12px;color:var(--text-secondary);">Report innerhalb 7-12 Werktagen.</div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-dark fin" style="padding:24px;display:flex;flex-direction:column;justify-content:center;">
+                            <div style="font-size:20px;font-weight:800;margin-bottom:3px;">AUTOMTR.</div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:18px;">KI & Automatisierungs-Consulting</div>
+                            <div style="display:flex;flex-direction:column;gap:7px;font-size:12.5px;">
+                                <div><span style="color:var(--text-secondary);display:inline-block;min-width:85px;">Web:</span>www.automtr.ai</div>
+                                <div><span style="color:var(--text-secondary);display:inline-block;min-width:85px;">E-Mail:</span>oliver@automtr.ai</div>
+                                <div><span style="color:var(--text-secondary);display:inline-block;min-width:85px;">Kontakt:</span>Oliver Kol</div>
+                                <div><span style="color:var(--text-secondary);display:inline-block;min-width:85px;">Reaktionszeit:</span>&lt; 24 Stunden</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card card-dark quote fin">
+                    <div class="quote-text">"Wir automatisieren nur, was Ihrem Unternehmen wirklich nützt — schrittweise, messbar und ohne Ihre Kunden zu verlieren."</div>
+                    <div class="quote-source">— AUTOMTR</div>
+                </div>
+                <div class="pg-footer"><div><strong>AUTOMTR.</strong> — www.automtr.ai &middot; oliver@automtr.ai</div><div>Vertraulich &middot; März 2026</div></div>
+            </div>
+
+        </div><!-- /content -->
+    </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+Chart.defaults.font.family="'Inter',sans-serif";
+Chart.defaults.font.size=11;
+Chart.defaults.plugins.legend.display=false;
+
+const pageMeta={
+    dashboard:{t:'Dashboard',s:'Live-Marktdaten Q1 2026 — PwC, BCG, Deloitte, McKinsey'},
+    marktdaten:{t:'KI-Marktdaten',s:'Aktuelle Studien & Kennzahlen zur KI-Adoption in Deutschland'},
+    prozesse:{t:'Audit-Prozess',s:'Strukturierter Ablauf in 3 Phasen mit 4 Analysefeldern'},
+    benchmark:{t:'Branchen-Benchmark',s:'KI-Readiness im Vergleich — McKinsey, PwC, Deloitte, KPMG'},
+    roi:{t:'ROI-Prognosen',s:'Belege aus unabhängigen Studien — nicht aus eigenen Hochrechnungen'},
+    risiko:{t:'Risiko-Assessment',s:'Was passiert, wenn Sie nicht handeln? Datenbasierte Szenarien.'},
+    pakete:{t:'Audit-Pakete',s:'Transparent. Skalierbar. Ohne Überraschungen.'}
+};
+
+const navItems=document.querySelectorAll('.nav-item[data-page]');
+const pages=document.querySelectorAll('.page');
+const titleEl=document.getElementById('pageTitle');
+const subEl=document.getElementById('pageSub');
+let inited={};
+
+function go(id){
+    navItems.forEach(n=>n.classList.remove('active'));
+    document.querySelector(`[data-page="${id}"]`)?.classList.add('active');
+    pages.forEach(p=>p.classList.remove('active'));
+    const t=document.getElementById('page-'+id);
+    if(t){
+        t.classList.add('active');
+        t.querySelectorAll('.fin').forEach(el=>{el.style.animation='none';el.offsetHeight;el.style.animation='';});
+    }
+    const m=pageMeta[id];
+    if(m){titleEl.textContent=m.t;subEl.textContent=m.s;}
+    requestAnimationFrame(()=>initCharts(id));
+    setTimeout(()=>{if(t)t.querySelectorAll('[data-width]').forEach(b=>{b.style.width=b.dataset.width+'%';});},200);
+    document.querySelector('.content')?.scrollTo({top:0,behavior:'smooth'});
+}
+
+navItems.forEach(i=>i.addEventListener('click',e=>{e.preventDefault();go(i.dataset.page);closeMobileNav();}));
+
+// Mobile nav
+const sidebar=document.getElementById('sidebar');
+const overlay=document.getElementById('sidebarOverlay');
+const mobileToggle=document.getElementById('mobileNavToggle');
+function openMobileNav(){sidebar.classList.add('open');overlay.classList.add('open');}
+function closeMobileNav(){sidebar.classList.remove('open');overlay.classList.remove('open');}
+mobileToggle.addEventListener('click',()=>{sidebar.classList.contains('open')?closeMobileNav():openMobileNav();});
+overlay.addEventListener('click',closeMobileNav);
+
+function initCharts(id){
+    if(inited[id])return;
+    if(id==='dashboard'){
+        const c=document.getElementById('adoptionChart')?.getContext('2d');
+        if(c){const g=c.createLinearGradient(0,0,0,240);g.addColorStop(0,'rgba(37,99,235,0.22)');g.addColorStop(1,'rgba(37,99,235,0)');
+        new Chart(c,{type:'line',data:{labels:['2020','2021','2022','2023','2024','2025','2026'],datasets:[{data:[6,8,9,15,27,35,41],borderColor:'#2563eb',borderWidth:2.5,fill:true,backgroundColor:g,tension:.4,pointRadius:3.5,pointBackgroundColor:'#2563eb',pointBorderColor:'#fff',pointBorderWidth:2,pointHoverRadius:6}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:50,ticks:{callback:v=>v+' %',color:'#9ca3af',font:{size:10}},grid:{color:'rgba(0,0,0,0.03)'},border:{display:false}},x:{ticks:{color:'#9ca3af',font:{size:10}},grid:{display:false},border:{display:false}}},plugins:{tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:8,callbacks:{label:c=>c.parsed.y+' %'}}}}});}
+        const d=document.getElementById('valueDonut');
+        if(d)new Chart(d,{type:'doughnut',data:{labels:['Signifikant','Kein Wert'],datasets:[{data:[26,74],backgroundColor:['#2563eb','rgba(255,255,255,0.12)'],borderWidth:0,borderRadius:4,spacing:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'74%',plugins:{tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:8,callbacks:{label:c=>c.parsed+' %'}}}}});
+        inited.dashboard=true;
+    }
+    if(id==='marktdaten'){
+        const c=document.getElementById('adoptionChart2')?.getContext('2d');
+        if(c)new Chart(c,{type:'bar',data:{labels:['2020','2021','2022','2023','2024','2025','2026'],datasets:[{data:[6,8,9,15,27,35,41],backgroundColor:['rgba(37,99,235,0.12)','rgba(37,99,235,0.17)','rgba(37,99,235,0.22)','rgba(37,99,235,0.35)','rgba(37,99,235,0.50)','rgba(37,99,235,0.70)','#2563eb'],borderRadius:8,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:50,ticks:{callback:v=>v+' %',color:'#9ca3af',font:{size:10}},grid:{color:'rgba(0,0,0,0.03)'},border:{display:false}},x:{ticks:{color:'#9ca3af',font:{size:10}},grid:{display:false},border:{display:false}}},plugins:{tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:8}}}});
+        inited.marktdaten=true;
+    }
+    if(id==='benchmark'){
+        const r=document.getElementById('competencyRadar');
+        if(r)new Chart(r,{type:'radar',data:{labels:['Strategie','Daten','Kompetenzen','Automatisierung','Change','Budget'],datasets:[{label:'Durchschnitt DE',data:[35,48,21,41,29,38],borderColor:'white',backgroundColor:'rgba(255,255,255,0.15)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'white'},{label:'KI-Leader',data:[82,76,68,78,71,74],borderColor:'#bbf7d0',backgroundColor:'rgba(187,247,208,0.08)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#bbf7d0',borderDash:[5,5]}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:100,ticks:{display:false},grid:{color:'rgba(255,255,255,0.20)'},pointLabels:{color:'white',font:{size:11,weight:'600'}},angleLines:{color:'rgba(255,255,255,0.12)'}}},plugins:{legend:{display:true,position:'bottom',labels:{color:'rgba(255,255,255,0.85)',boxWidth:10,padding:14,font:{size:10}}}}}});
+        inited.benchmark=true;
+    }
+    if(id==='roi'){
+        const b=document.getElementById('roiBarChart')?.getContext('2d');
+        if(b)new Chart(b,{type:'bar',data:{labels:['ROI / 1 €\nKundenservice','Umsatz-\nwachstum','Produktivität\n/ Jahr','Gehalt\nKI-Skills'],datasets:[{data:[3.5,2.5,1.13,1.56],backgroundColor:['#2563eb','#0ea5e9','#60a5fa','#06b6d4'],borderRadius:10,borderSkipped:false,barThickness:36}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',scales:{x:{beginAtZero:true,ticks:{callback:v=>v+'x',color:'#9ca3af',font:{size:10}},grid:{color:'rgba(0,0,0,0.03)'},border:{display:false}},y:{ticks:{color:'#6b7280',font:{size:10}},grid:{display:false},border:{display:false}}},plugins:{tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:8}}}});
+        inited.roi=true;
+    }
+}
+
+// Init dashboard charts
+initCharts('dashboard');
+
+// Observer for bar animations
+const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.querySelectorAll('[data-width]').forEach(b=>{b.style.width=b.dataset.width+'%';});});},{threshold:0.2});
+document.querySelectorAll('.card,.risk-card').forEach(c=>obs.observe(c));
+</script>
+</body>
+</html>
