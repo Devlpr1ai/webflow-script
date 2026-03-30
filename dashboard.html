@@ -189,20 +189,6 @@
         .topbar-left h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
         .topbar-left p{font-size:12px;color:var(--text-secondary);margin-top:2px;}
         .topbar-right{display:flex;align-items:center;gap:10px;}
-        .search-box{
-            display:flex;align-items:center;gap:8px;
-            background:rgba(255,255,255,0.5);
-            backdrop-filter:var(--blur);
-            border:1px solid var(--glass-border);
-            border-radius:var(--radius-sm);padding:7px 14px;min-width:220px;
-            transition:all 0.25s;
-        }
-        .search-box:focus-within{background:rgba(255,255,255,0.75);box-shadow:0 0 0 3px rgba(37,99,235,0.18);}
-        .search-box input{
-            border:none;background:transparent;font-family:inherit;
-            font-size:12.5px;outline:none;width:100%;color:var(--text);
-        }
-        .search-box svg{width:15px;height:15px;color:var(--text-secondary);}
         .topbar-cta{
             display:inline-flex;align-items:center;gap:8px;
             padding:9px 20px;
@@ -543,19 +529,7 @@
         }
         .sidebar-overlay.open{display:block;opacity:1;}
 
-        @media(max-width:900px){
-            .mobile-nav-toggle{display:flex;}
-            .sidebar{
-                position:fixed;top:12px;left:12px;bottom:12px;
-                width:260px;z-index:100;
-                transform:translateX(calc(-100% - 20px));
-                transition:transform 0.35s cubic-bezier(.22,1,.36,1);
-                height:auto;
-            }
-            .sidebar.open{
-                transform:translateX(0);
-            }
-        }
+        /* mobile-nav-toggle visibility handled in main responsive block */
 
         /* ═══════════════════════════════════════════ */
         /* ── GLOW & ANIMATION SYSTEM ──               */
@@ -787,13 +761,22 @@
 
         /* Tablet portrait */
         @media(max-width:900px){
-            .sidebar{display:none;}
+            /* Sidebar: hidden by default, slides in via JS */
+            .sidebar{
+                position:fixed;top:12px;left:12px;bottom:12px;
+                width:260px;z-index:100;
+                transform:translateX(calc(-100% - 20px));
+                transition:transform 0.35s cubic-bezier(.22,1,.36,1);
+                height:auto;
+            }
+            .sidebar.open{transform:translateX(0);}
+            .mobile-nav-toggle{display:flex;}
             .layout{padding:12px;gap:0;}
             .main{width:100%;}
             .content{padding:20px;border-radius:var(--radius-md);}
             .topbar{
-                padding:14px 18px;border-radius:var(--radius-md);
-                margin-bottom:12px;flex-wrap:wrap;gap:12px;
+                padding:12px 16px;border-radius:var(--radius-md);
+                margin-bottom:12px;
             }
             .topbar-left h1{font-size:18px;}
             .topbar-cta{padding:8px 16px;font-size:12px;}
@@ -801,10 +784,10 @@
             .grid-3{grid-template-columns:1fr;}
             .grid-4{grid-template-columns:1fr 1fr;}
             .pkg-cards{flex-direction:column;}
-            .phase-timeline{flex-direction:column;gap:24px;}
+            .phase-timeline{flex-direction:column;gap:20px;}
             .phase-timeline::before{display:none;}
-            .phase-item{text-align:left;display:flex;align-items:flex-start;gap:16px;padding:0;}
-            .phase-num{margin:0;flex-shrink:0;width:50px;height:50px;font-size:16px;}
+            .phase-item{text-align:left;display:flex;align-items:flex-start;gap:14px;padding:0;}
+            .phase-num{margin:0;flex-shrink:0;width:48px;height:48px;font-size:16px;}
             .phase-desc{margin:0;max-width:none;}
             .section{margin-bottom:16px;}
             .card{padding:18px;}
@@ -812,27 +795,30 @@
             .stat-icon{width:38px;height:38px;}
             .big-num{font-size:38px;}
             .risk-metric-val{font-size:22px;}
-            .rbar-row{flex-wrap:wrap;gap:8px;}
             .rbar-label{min-width:100px;font-size:11px;}
             .rbar-val{font-size:12px;min-width:50px;}
             .cbar-name{min-width:100px;font-size:11px;}
             .pg-footer{flex-direction:column;gap:4px;text-align:center;}
+            /* Kill heavy animations on mobile for perf */
+            .blob{animation:none !important;}
+            .logo-icon{animation:none !important;}
+            .nav-item.active{animation:none !important;}
+            .sidebar-footer{animation:none !important;}
+            .topbar-cta{animation:none !important;}
+            .pkg.featured::after,.pkg.enterprise::after,.card-dark::after{display:none !important;}
         }
 
         /* Mobile */
         @media(max-width:600px){
             .layout{padding:8px;}
             .content{padding:14px;border-radius:var(--radius-sm);}
-            .topbar{
-                padding:12px 14px;border-radius:var(--radius-sm);
-                flex-direction:column;align-items:stretch;gap:10px;
-            }
+            .topbar{padding:10px 14px;border-radius:var(--radius-sm);}
+            .topbar-left{gap:10px !important;}
             .topbar-left h1{font-size:16px;}
-            .topbar-left p{font-size:10.5px;}
-            .topbar-right{justify-content:flex-end;}
-            .topbar-cta{width:100%;justify-content:center;padding:10px 16px;}
-            .grid-4{grid-template-columns:1fr;}
-            .grid-2,.grid-3,.grid-wide{grid-template-columns:1fr;}
+            .topbar-left p{font-size:10px;display:none;}
+            .topbar-cta{padding:8px 14px;font-size:11.5px;}
+            .topbar-cta svg{display:none;}
+            .grid-4{grid-template-columns:1fr 1fr;}
             .card{padding:16px;border-radius:var(--radius-sm);}
             .card-dark{border-radius:var(--radius-sm);}
             .stat-value{font-size:24px;}
@@ -847,9 +833,9 @@
             .section-sub{font-size:11px;}
             .big-num{font-size:32px;}
             .big-label{font-size:11px;}
-            .pkg{padding:20px;}
+            .pkg{padding:18px;}
             .pkg-name{font-size:15px;}
-            .pkg-price{font-size:30px;}
+            .pkg-price{font-size:28px;}
             .pkg-price span{font-size:13px;}
             .pkg-features li{font-size:12px;padding:5px 0;}
             .pkg-cta{padding:10px;font-size:12.5px;}
@@ -858,35 +844,34 @@
             .risk-desc{font-size:12px;}
             .risk-metric-val{font-size:20px;}
             .risk-metric-label{font-size:10.5px;}
-            .quote{padding:18px 20px;}
+            .quote{padding:16px 18px;}
             .quote-text{font-size:13px;}
             .quote::before{font-size:40px;}
             .donut-val{font-size:28px;}
             .donut-label{font-size:9px;}
-            .phase-num{width:44px;height:44px;}
-            .phase-num svg{width:20px;height:20px;}
+            .phase-num{width:42px;height:42px;}
+            .phase-num svg{width:18px;height:18px;}
             .phase-title{font-size:13px;}
             .phase-desc{font-size:11px;}
             .phase-badge{font-size:10px;padding:2px 7px;}
-            .rbar-row{gap:6px;}
             .rbar-label{min-width:80px;font-size:10.5px;}
             .rbar-track{height:8px;}
             .rbar-val{font-size:11px;min-width:45px;}
-            .cbar-row{gap:8px;}
             .cbar-name{min-width:85px;font-size:11px;}
             .cbar-track{height:6px;}
             .cbar-val{font-size:11px;min-width:34px;}
-            .blob{opacity:0.20;}
-            .blob-1{width:400px;height:400px;}
-            .blob-2{width:300px;height:300px;}
+            .blob{opacity:0.15;}
+            .blob-1{width:350px;height:350px;}
+            .blob-2{width:250px;height:250px;}
             .blob-3{display:none;}
+            /* Reduce motion */
+            .fin{animation-duration:0.35s !important;}
+            .page{animation-duration:0.3s !important;}
         }
 
-        /* Tiny mobile */
-        @media(max-width:380px){
-            .layout{padding:6px;}
-            .content{padding:10px;}
-            .topbar{padding:10px 12px;}
+        /* Small mobile */
+        @media(max-width:420px){
+            .grid-4{grid-template-columns:1fr;}
             .topbar-left h1{font-size:15px;}
             .card{padding:14px;}
             .stat-value{font-size:22px;}
